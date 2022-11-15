@@ -10,7 +10,7 @@ import planning_algo
 
 
 class Pathplanning:
-    def __init__(self, map_png, facilities_png, weights, ascending_gradient=True, algorithm="A*"):  # smaller pixel size means smoother line results
+    def __init__(self, map_png, facilities_png, weights, ascending_gradient=True, algorithm="Dijkstra"):  # smaller pixel size means smoother line results  # dijkstra for computational purposes
         # declare parameters
         self.mapdata = []  # initiate not numpy array yet
         self.img = cv2.imread(map_png, 0) # 0 means view as grayscale
