@@ -133,7 +133,7 @@ class Pathplanning:
 
         #     num_facil -= 1
         ##-----------------------------------------------------------
-        self.facility_coords=[(200, 300), (60, 200), (250, 170)]
+        self.facility_coords=[(100, 300), (20, 200), (170, 12)]
         print('facilities (x, y): ', self.facility_nodes)
         print('facility coords: ', self.facility_coords)
         

@@ -1,3 +1,4 @@
+from copyreg import pickle
 import cv2
 import numpy as np
 import pandas as pd
@@ -7,7 +8,7 @@ import math
 
 
 ######  A* path planning algorithm
-def draw_route(c1, c2, map_img, scale_factor=1): # return lst of pixel of optimal route  ### does not mutate map_img
+def draw_route(c1, c2, map_img, scale_factor=2): # return lst of pixel of optimal route  ### does not mutate map_img
     '''
     c1/c2 : (x, y)
     map_img = [[pix, pix]]
@@ -23,7 +24,6 @@ def draw_route(c1, c2, map_img, scale_factor=1): # return lst of pixel of optima
     
     while current[0] != c2:
         x, y = current[0]
-        print('current',current[0])
         neighbors = add_cand(current[0], current[1], img)  # {(x,y):from_cost}
         ###############print('all neighbors', neighbors)
 
@@ -32,6 +32,7 @@ def draw_route(c1, c2, map_img, scale_factor=1): # return lst of pixel of optima
         for n in neighbors:
             if n not in closed and n not in terminated:
                 xn,yn=n
+                #print(img[yn][xn]*scale_factor)
                 available_neighbors[n] = dst_cords(n,end) + (img[yn][xn]*scale_factor)
                 opened.append(n)
         ################print('opened',opened)
@@ -40,7 +41,6 @@ def draw_route(c1, c2, map_img, scale_factor=1): # return lst of pixel of optima
 
         #### if current is the lost branch (leads to nowhere) --> current becomes previous
         if len(available_neighbors) == 0:
-            print('tr')
             closed.remove(current[0])
             terminated.append(current[0])
             current=[closed[-1],closed_cost[-1]]
@@ -75,22 +75,65 @@ def draw_route(c1, c2, map_img, scale_factor=1): # return lst of pixel of optima
             closed.append(current[0])
             closed_cost.append(current[1])
 
-            print(current)
-
-        
     ##################print('closed',closed)
         
+    ## clean route (only choose most needed node)
+    final_route = clean_route(c1, c2, closed)
+
     ## visualize:
-    for coord in closed:
+    for coord in final_route:
         x,y= coord
         img[y][x] = 0
     
     plt.imshow(img)
     plt.scatter([c1[0], c2[0]], [c1[1],c2[1]],c='r', marker=">")
     plt.show()
-    return closed
-
     
+    return final_route
+# def clean_route(route,img):
+#     x_y = list(zip(*route))
+#     max_width = max(x_y[0])
+#     max_height = max(x_y[1])
+#     stat_b = np.array([[None]*(max_width+1)]*(max_height+1))
+    
+#     #store existing route on matrix
+#     for pix in route:
+#         x,y = pix
+#         stat_b[y][x] = 1
+#     print(stat_b)
+
+def clean_route(c1, c2,route):
+    x_y = list(zip(*route))
+    max_width = max(x_y[0])
+    max_height = max(x_y[1])
+    stat_b = np.array([[None]*(max_width+1)]*(max_height+1))
+    new_route = [c1]
+    cur_pix = c1
+    for pix in route:
+        x,y = pix
+        stat_b[y][x] = 1
+    i = 0
+    while cur_pix != c2:
+        neighbors= add_cand(cur_pix, 0, stat_b)
+        cand_index = {}
+        for pix in neighbors.keys():
+            x, y = pix
+            if stat_b[y][x] == 1:
+                cand_index[pix] = route.index(pix)
+        
+        #print('connective neighbors',cand_index)
+        cur_pix = max(cand_index,key=cand_index.get)
+        new_route.append(cur_pix)
+        #print('next choice',cur_pix)
+        if i == 3:
+            break
+        # i+=1
+
+    new_route.append(cur_pix)  # this is when cur_pix == c2
+    #print(len(route), len(new_route))
+    return new_route
+
+
 def add_cand(c1, cost, img):
     width = len(img[0])
     height = len(img)
