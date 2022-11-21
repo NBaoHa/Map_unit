@@ -133,7 +133,7 @@ class Pathplanning:
 
         #     num_facil -= 1
         ##-----------------------------------------------------------
-        self.facility_coords=[(100, 300), (20, 200), (170, 12)]
+        self.facility_coords=[(100, 300), (20, 200), (400, 430)]
         print('facilities (x, y): ', self.facility_nodes)
         print('facility coords: ', self.facility_coords)
         
@@ -167,7 +167,7 @@ class Pathplanning:
 
 
 if __name__ == '__main__':
-    g = Pathplanning('/Users/baoha/Desktop/Pathplanning/Map_unit/data/asdff.png',
+    g = Pathplanning('/Users/baoha/Desktop/Pathplanning/Map_unit/data/Sample_Res_700.png',
     '/Users/baoha/Desktop/Pathplanning/Map_unit/data/reserves_700.png', ascending_gradient=False)
     g.run()
     
