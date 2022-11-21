@@ -22,7 +22,7 @@ def draw_route(c1, c2, map_img, scale_factor=2): # return lst of pixel of optima
     closed_cost =[current[1]]
     terminated=[] # stores leaf nodes that are from lost branch
     
-    while current[0] != c2:
+    while current[0] != end:
         x, y = current[0]
         neighbors = add_cand(current[0], current[1], img)  # {(x,y):from_cost}
         ###############print('all neighbors', neighbors)
@@ -30,14 +30,14 @@ def draw_route(c1, c2, map_img, scale_factor=2): # return lst of pixel of optima
         # check for open neighbors
         available_neighbors = {}
         for n in neighbors:
-            if n not in closed and n not in terminated:
+            if n not in closed and n not in terminated  and \
+                img[n[1]][n[0]] !=0:
                 xn,yn=n
                 #print(img[yn][xn]*scale_factor)
                 available_neighbors[n] = dst_cords(n,end) + (img[yn][xn]*scale_factor)
                 opened.append(n)
         ################print('opened',opened)
         ################print('available',available_neighbors)
-
 
         #### if current is the lost branch (leads to nowhere) --> current becomes previous
         if len(available_neighbors) == 0:

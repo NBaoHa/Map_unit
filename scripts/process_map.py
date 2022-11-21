@@ -12,7 +12,7 @@ class Pathplanning:
         # declare parameters
         self.mapdata = []  # initiate not numpy array yet
         self.img = cv2.imread(map_png, 0) # 0 means view as grayscale
-        self.img = self.img
+        self.img = np.array(self.img)
         if facilities_png == "": # if no facilities png is provided, then manually place facilities
             self.facil_mask = None
         else:
@@ -56,6 +56,7 @@ class Pathplanning:
         # print(len(self.facil_mask))
         print('dimensions: ',self.width, self.height)
         self.new_canvas = [[0]*self.width]*self.height
+        self.new_canvas = np.array(self.new_canvas)
 
         # record values in ascending_gradient order (True means small to large, False means otherwise)
         pix_val = [] # 0 is un accountable --> [0, pix1, pix2] --> [0, weight1, weight2]
@@ -74,11 +75,21 @@ class Pathplanning:
         
         self.weights = list(range(1,len(pix_val)+1))
         #connect weight legend
-        self.weights_legend[0] = 999
+        print(f'max_pix_val {max(self.weights)}')
+        self.weights_legend[0] = max(self.weights)+5
         for index,uniq_val in enumerate(pix_val):
             self.weights_legend[uniq_val] = self.weights[index]
 
         print('weight legend: ', self.weights_legend)
+
+        #create new imagery with re-evaluated weights
+        
+        for y, x in np.ndindex(self.img.shape):
+            key_val = self.img[y][x]
+            self.new_canvas[y][x] = self.weights_legend[key_val]
+            
+            
+        
        
 
         
@@ -120,7 +131,7 @@ class Pathplanning:
 
         else:
             # manually place facilities
-            plt.imshow(self.img,cmap='gray')
+            plt.imshow(self.new_canvas)#,cmap='gray')
             plt.show()
             print(f'Please place facilities on the map within the boundaries of {self.width} and {self.height}')
             facilities = (input('what are the facilities coordinates? (x,y)')).split(' ')
@@ -137,7 +148,8 @@ class Pathplanning:
             for c2 in self.facility_coords:
                 if c1 != c2 and ((c2, c1) not in self.routes.keys()):
                     
-                    route = planning.draw_route(c1, c2, self.img) # self.img is [[pix pix]]
+                    route = planning.draw_route(c1, c2, self.new_canvas) # self.img is [[pix pix]]
+                    
                     #print(route)
                     self.routes[(c1,c2)] = route
 
@@ -145,14 +157,15 @@ class Pathplanning:
         for route in self.routes:
             for coord in self.routes[route]:
                 x,y = coord[0], coord[1]
-                self.img[y][x] = 0
+                self.new_canvas[y][x] = 10
 
 
                 
 
 
     def show_res(self):
-        plt.imshow(self.img)
+        # print origin image would be nice bonus
+        plt.imshow(self.new_canvas)
         #scatter plot facilities
         plt.scatter(self.facilities_arr['x'], self.facilities_arr['y'], c='r', marker='>')
         plt.show()
@@ -162,7 +175,7 @@ class Pathplanning:
 
 
 if __name__ == '__main__':
-    g = Pathplanning('/home/bao/Map_unit/Map_unit/data/fff.png',
-    '', ascending_gradient=True)
+    g = Pathplanning('/Users/baoha/Desktop/Pathplanning/Map_unit/data/Result_500.png',
+    '', ascending_gradient=False)
     g.run()
     
