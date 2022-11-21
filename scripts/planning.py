@@ -90,17 +90,7 @@ def draw_route(c1, c2, map_img, scale_factor=2): # return lst of pixel of optima
     plt.show()
     
     return final_route
-# def clean_route(route,img):
-#     x_y = list(zip(*route))
-#     max_width = max(x_y[0])
-#     max_height = max(x_y[1])
-#     stat_b = np.array([[None]*(max_width+1)]*(max_height+1))
-    
-#     #store existing route on matrix
-#     for pix in route:
-#         x,y = pix
-#         stat_b[y][x] = 1
-#     print(stat_b)
+
 
 def clean_route(c1, c2,route):
     x_y = list(zip(*route))
@@ -185,7 +175,7 @@ if __name__ == "__main__":
 
     #image = cv2.imread('/home/bao/Map_unit/Map_unit/data/Result_700.png', 0)
     #print(img)
-    plt.imshow(img)
-    plt.show()
+    # plt.imshow(img)
+    # plt.show()
     route = draw_route((1, 0), (8,6), img)#[:100])
     #print(route)

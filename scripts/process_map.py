@@ -1,4 +1,4 @@
-
+from sklearn.cluster import KMeans
 import cv2
 import numpy as np
 import pandas as pd
@@ -13,7 +13,10 @@ class Pathplanning:
         self.mapdata = []  # initiate not numpy array yet
         self.img = cv2.imread(map_png, 0) # 0 means view as grayscale
         self.img = self.img
-        self.facil_mask = cv2.imread(facilities_png, 0)
+        if facilities_png == "": # if no facilities png is provided, then manually place facilities
+            self.facil_mask = None
+        else:
+            self.facil_mask = cv2.imread(facilities_png, 0)
         self.weights = []   # corresponding pixel val to weights
         self.ascending_gradient = ascending_gradient # signify that darker colors have higher weights 
         self.algo = algorithm
@@ -24,6 +27,7 @@ class Pathplanning:
         self.facility_nodes = {} # store nodes as Hashmap for faster computation
         self.facility_coords = [] # for easier acess in gen map   /// (x, y)
         self.weights_legend = {} # stores cost
+        self.facilities_arr = {'x':[], 'y':[]} # for plotting
 
         #output variables
         self.routes = {}
@@ -39,8 +43,8 @@ class Pathplanning:
         #print(self.routes.keys())
         # show result
 
-        #self.gen_new_img()
-        #self.show_res()
+        self.gen_new_img()
+        self.show_res()
 
 
     def preprocess(self):
@@ -85,67 +89,56 @@ class Pathplanning:
         calculate centroids from facilities img and
         place them into new_canvas
         '''
-        ### HERE is to calculate centroid coordinates
-        # curx,cury = 0,0
-        # temp_coord = []
-        # x_arr = []
-        # y_arr = []
-        # while cury < self.height:
-        #     while curx < self.width:
-        #         if self.facil_mask[cury][curx] == 255:
-        #             self.facil_mask[cury][curx] = 100
-        #             x_arr.append(curx)
-        #             y_arr.append(cury)
-        #             temp_coord.append((curx, cury))
-                
-        #         curx +=1
-        #     curx =0
-        #     cury+=1
+        ''' cluster pixels with value of 255 in self.facil_mask into centroids'''
+        if self.facil_mask is not None:
+            # find all the pixels with value of 255
+            for y in range(len(self.facil_mask)):
+                for x in range(len(self.facil_mask[0])):
+                    if self.facil_mask[y][x] == 255:
+                        self.facility_coords.append((x,y))
+            plt.imshow(self.facil_mask)
+            plt.show()
 
-            ## get centroid
+            # cluster all points in self.facility_coords into centroids (using k-means) 
+            kmeans = KMeans(n_clusters=10, random_state=0).fit(self.facility_coords)
+            centroids = kmeans.cluster_centers_
+            print('centroids: ', centroids)
+            #round centroids to nearest int and store in self.facility_coords
+            self.facility_coords = []
 
-        
-        
-        # xlang,ylang = x_arr,y_arr
-
-        # print(temp_coord)
-        # plt.imshow(self.img)
-        # plt.imshow(self.facil_mask)
-        # plt.scatter(xlang, ylang, c='r', marker=">")
-        # plt.show()
-        
-        #print(self.facil_mask[300:400][0])
-        ## Draft delete below if the facilities png is available------  !!! can sychronously place facility centroids in blank canvas
-        # num_facil = 2
-        # while num_facil > 0:
-        #     smpx, smpy = int(random.uniform(0, self.width)), int(random.uniform(0, self.height))
-        #     while smpx in self.facility_nodes.keys() and smpy in self.facility_nodes[smpx]:
-        #         smpx, smpy = int(random.uniform(0, self.width)), int(random.uniform(0, self.height))
+            # go through all coordinates in self.facility_coords and change the pixel value in self.facilmask to 255 on those coordinates while other pixels are 0
+            for coord in centroids:
+                x,y = int(coord[0]), int(coord[1])
+                self.facility_coords.append((x,y))
             
-        #     if smpx in self.facility_nodes.keys():
-        #         self.facility_nodes[smpx].append(smpy)
-        #         self.img[smpy][smpx] = 0
-        #         self.facility_coords.append((smpx, smpy))
-        #     else:
-        #         self.facility_nodes[smpx] = [smpy]
-        #         self.facility_coords.append((smpx, smpy))
-        #         self.img[smpy][smpx] = 0
+            print('facility coords: ', self.facility_coords)
+            #for each coordinate in self.facility_coords, put x,y into self.facility_arr    
+            for coord in self.facility_coords:
+                x,y = coord[0], coord[1]
+                self.facilities_arr['x'].append(x)
+                self.facilities_arr['y'].append(y)
 
-        #     num_facil -= 1
-        ##-----------------------------------------------------------
-        self.facility_coords=[(100, 300), (20, 200), (170, 12)]
-        print('facilities (x, y): ', self.facility_nodes)
-        print('facility coords: ', self.facility_coords)
+        else:
+            # manually place facilities
+            plt.imshow(self.img,cmap='gray')
+            plt.show()
+            print(f'Please place facilities on the map within the boundaries of {self.width} and {self.height}')
+            facilities = (input('what are the facilities coordinates? (x,y)')).split(' ')
+            for facility in facilities:
+                x,y = facility.split(',')
+                self.facility_coords.append((int(x),int(y)))
+                self.facilities_arr['x'].append(int(x))
+                self.facilities_arr['y'].append(int(y))
+            print('facility coords: ', self.facility_coords)
         
 
     def gen_graph(self):
         for c1 in self.facility_coords: # O(n^2)
             for c2 in self.facility_coords:
                 if c1 != c2 and ((c2, c1) not in self.routes.keys()):
-                    #print(self.img[c1[1]][c1[0]])
-                    # if self.img[c1[1]][c1[0]] != 0 and self.img[c2[1]][c2[0]] != 0:
+                    
                     route = planning.draw_route(c1, c2, self.img) # self.img is [[pix pix]]
-                    print(route)
+                    #print(route)
                     self.routes[(c1,c2)] = route
 
     def gen_new_img(self):
@@ -159,15 +152,17 @@ class Pathplanning:
 
 
     def show_res(self):
-        cv2.imshow('image', self.img)
-        cv2.imshow("mask",self.facil_mask)
-        cv2.waitKey(0)
+        plt.imshow(self.img)
+        #scatter plot facilities
+        plt.scatter(self.facilities_arr['x'], self.facilities_arr['y'], c='r', marker='>')
+        plt.show()
+
 
 
 
 
 if __name__ == '__main__':
-    g = Pathplanning('/Users/baoha/Desktop/Pathplanning/Map_unit/data/asdff.png',
-    '/Users/baoha/Desktop/Pathplanning/Map_unit/data/reserves_700.png', ascending_gradient=False)
+    g = Pathplanning('/home/bao/Map_unit/Map_unit/data/fff.png',
+    '', ascending_gradient=True)
     g.run()
     
