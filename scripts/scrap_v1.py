@@ -23,3 +23,5 @@ print(pixels)
 
 plt.imshow(image)
 plt.show()
+
+

@@ -8,7 +8,7 @@ import math
 
 
 ######  A* path planning algorithm
-def draw_route(c1, c2, map_img, scale_factor=2): # return lst of pixel of optimal route  ### does not mutate map_img
+def draw_route(c1, c2, map_img, scale_factor=2,Null_factor=0): # return lst of pixel of optimal route  ### does not mutate map_img
     '''
     c1/c2 : (x, y)
     map_img = [[pix, pix]]
@@ -31,19 +31,23 @@ def draw_route(c1, c2, map_img, scale_factor=2): # return lst of pixel of optima
         available_neighbors = {}
         for n in neighbors:
             if n not in closed and n not in terminated  and \
-                img[n[1]][n[0]] !=0:
+                img[n[1]][n[0]] != Null_factor: ## account for max value (1003) in map_img
                 xn,yn=n
                 #print(img[yn][xn]*scale_factor)
-                available_neighbors[n] = dst_cords(n,end) + (img[yn][xn]*scale_factor)
+                available_neighbors[n] = dst_cords(n,end) * (img[yn][xn]*scale_factor)
                 opened.append(n)
         ################print('opened',opened)
         ################print('available',available_neighbors)
 
         #### if current is the lost branch (leads to nowhere) --> current becomes previous
         if len(available_neighbors) == 0:
-            closed.remove(current[0])
-            terminated.append(current[0])
-            current=[closed[-1],closed_cost[-1]]
+            if len(closed) == 1:
+                print('invalid facility location')
+                return None
+            else:
+                closed.remove(current[0])
+                terminated.append(current[0])
+                current=[closed[-1],closed_cost[-1]]
             
         
         else:
@@ -81,14 +85,13 @@ def draw_route(c1, c2, map_img, scale_factor=2): # return lst of pixel of optima
     final_route = clean_route(c1, c2, closed)
 
     ## visualize:
-    for coord in final_route:
-        x,y= coord
-        img[y][x] = 0
+    # for coord in final_route:
+    #     x,y= coord
+    #     img[y][x] = 0
     
-    plt.imshow(img)
-    plt.scatter([c1[0], c2[0]], [c1[1],c2[1]],c='r', marker=">")
-    plt.show()
-    
+    # plt.imshow(img)
+    # plt.scatter([c1[0], c2[0]], [c1[1],c2[1]],c='r', marker=">")
+    # plt.show()
     return final_route
 
 

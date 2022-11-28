@@ -5,10 +5,10 @@ import pandas as pd
 import random
 import matplotlib.pyplot as plt
 import planning
-
+import sys
 
 class Pathplanning:
-    def __init__(self, map_png, facilities_png, ascending_gradient=True, algorithm="Dijkstra"):  # smaller pixel size means smoother line results  # dijkstra for computational purposes
+    def __init__(self, map_png, facilities_png,output_file, ascending_gradient=True, scale_factor=10):  # smaller pixel size means smoother line results  # dijkstra for computational purposes
         # declare parameters
         self.mapdata = []  # initiate not numpy array yet
         self.img = cv2.imread(map_png, 0) # 0 means view as grayscale
@@ -19,8 +19,9 @@ class Pathplanning:
             self.facil_mask = cv2.imread(facilities_png, 0)
         self.weights = []   # corresponding pixel val to weights
         self.ascending_gradient = ascending_gradient # signify that darker colors have higher weights 
-        self.algo = algorithm
-        
+        self.scale_factor = scale_factor
+        self.output_file = output_file
+
         # undeclared variables
         self.width, self.height = 0,0  
         self.new_canvas = []   # for accessing canvas --> img[height][width] <-- [y][x]
@@ -28,8 +29,6 @@ class Pathplanning:
         self.facility_coords = [] # for easier acess in gen map   /// (x, y)
         self.weights_legend = {} # stores cost
         self.facilities_arr = {'x':[], 'y':[]} # for plotting
-
-        #output variables
         self.routes = {}
         
     def run(self):
@@ -37,21 +36,20 @@ class Pathplanning:
         self.preprocess()
         # place facilities (nodes in graph)
         self.determine_nodes()
-        
-        
-        self.gen_graph()   ## do all possible connections between all the reserves (can filter out later with Network Analysis)
-        #print(self.routes.keys())
-        # show result
-
+        # generate routes between facilities
+        self.gen_graph()  
+        # generate new image with routes
         self.gen_new_img()
         self.show_res()
+        # export routes to png using cv2
+        self.export_routes()
+
 
 
     def preprocess(self):
         # mark boundaries
         self.width = len(self.img[0])
         self.height = len(self.img)
-        print(self.img)
         # print(len(self.facil_mask[0]))  ## make sure two png are the same dim
         # print(len(self.facil_mask))
         print('dimensions: ',self.width, self.height)
@@ -76,19 +74,18 @@ class Pathplanning:
         self.weights = list(range(1,len(pix_val)+1))
         #connect weight legend
         print(f'max_pix_val {max(self.weights)}')
-        self.weights_legend[0] = max(self.weights)+5
+        self.weights_legend[0] = max(self.weights)+1
         for index,uniq_val in enumerate(pix_val):
             self.weights_legend[uniq_val] = self.weights[index]
 
         print('weight legend: ', self.weights_legend)
 
         #create new imagery with re-evaluated weights
-        
         for y, x in np.ndindex(self.img.shape):
             key_val = self.img[y][x]
             self.new_canvas[y][x] = self.weights_legend[key_val]
             
-            
+        print('new canvas: ', self.new_canvas)
         
        
 
@@ -129,10 +126,11 @@ class Pathplanning:
                 self.facilities_arr['x'].append(x)
                 self.facilities_arr['y'].append(y)
 
+        # manually place facilities if no facility image is given
         else:
-            # manually place facilities
-            plt.imshow(self.new_canvas)#,cmap='gray')
+            plt.imshow(self.new_canvas, cmap='gray')#,cmap='gray')
             plt.show()
+            print('no facilities png provided, manually place facilities')
             print(f'Please place facilities on the map within the boundaries of {self.width} and {self.height}')
             facilities = (input('what are the facilities coordinates? (x,y)')).split(' ')
             for facility in facilities:
@@ -144,28 +142,52 @@ class Pathplanning:
         
 
     def gen_graph(self):
+        tag= 0
+        amount = 1
+        output = len(self.facility_coords)* (len(self.facility_coords)-1)
         for c1 in self.facility_coords: # O(n^2)
             for c2 in self.facility_coords:
                 if c1 != c2 and ((c2, c1) not in self.routes.keys()):
                     
-                    route = planning.draw_route(c1, c2, self.new_canvas) # self.img is [[pix pix]]
-                    
+                    route = planning.draw_route(c1, c2, self.new_canvas, scale_factor=self.scale_factor,Null_factor=self.weights_legend[0]) # self.img is [[pix pix]]
+                    print(f'{int(amount / output * 100)}% done')
                     #print(route)
-                    self.routes[(c1,c2)] = route
+                    self.routes[tag] = route
+                    tag += 1
+                    amount +=1
 
     def gen_new_img(self):
-        for route in self.routes:
-            for coord in self.routes[route]:
-                x,y = coord[0], coord[1]
-                self.new_canvas[y][x] = 10
-
-
+        # create new image with routes
+        for y, x in np.ndindex(self.new_canvas.shape):
+            key_val = self.new_canvas[y][x]
+            if key_val == self.weights_legend[0]:
+                self.new_canvas[y][x] = 0
                 
+            else:
+                self.new_canvas[y][x] +=50 
 
+        interval = 255
+        for route_tag in self.routes:
+            for coord in self.routes[route_tag]:
+                x,y = coord[0], coord[1]
+                self.new_canvas[y][x] = interval # to separate different routes
+                self.img[y][x] = 150
+            interval -=0
+        
+        
 
+    def export_routes(self):
+        # export routes to png using cv2
+        cv2.imwrite(self.output_file, self.new_canvas)
+        print(f'exported routes to {self.output_file}')
+       
+        
+
+        
     def show_res(self):
         # print origin image would be nice bonus
-        plt.imshow(self.new_canvas)
+        plt.imshow(self.new_canvas, cmap='gray')
+        #plt.imshow(self.img, cmap='gray')
         #scatter plot facilities
         plt.scatter(self.facilities_arr['x'], self.facilities_arr['y'], c='r', marker='>')
         plt.show()
@@ -173,9 +195,12 @@ class Pathplanning:
 
 
 
-
 if __name__ == '__main__':
-    g = Pathplanning('/Users/baoha/Desktop/Pathplanning/Map_unit/data/Result_500.png',
-    '', ascending_gradient=False)
+    g = Pathplanning(
+        '/Users/baoha/Desktop/Pathplanning/Map_unit/data/Result_300.png',
+        '',
+        '/Users/baoha/Desktop/Pathplanning/Map_unit/data/path_planned_res_sc20_300.png',
+        ascending_gradient=True,
+        scale_factor=20)
     g.run()
     
